@@ -78,33 +78,80 @@ class ScrapeWebsiteTool:
 
 
 def fetch_website_content(website_url):
+    # 定义一个内部函数：专门负责把“垃圾”变成“人话”
+    def sanitize_output(raw_text, error_obj=None):
+        if not raw_text and not error_obj:
+            return "网页抓取结果为空。"
+            
+        content = raw_text if raw_text else ""
+        
+        # 1. 关键词扫描 (针对那些“伪装”成成功页面的错误，比如 Nginx 404 页)
+        # 如果内容里包含这些词，说明抓取到的是错误页，而不是正文
+        error_keywords = [
+            "404 Not Found", "500 Internal Server Error", "403 Forbidden", 
+            "401 Unauthorized", "nginx", "Apache", "Cloudflare", 
+            "Connection timed out", "DNS resolution failed"
+        ]
+        
+        for keyword in error_keywords:
+            if keyword in content:
+                logger.warning(f"检测到网页内容包含错误标识: '{keyword}'，已拦截。")
+                return f"Error: 目标网页返回了错误页面 (包含标识 '{keyword}')，无法获取有效正文。"
+
+        # 2. 长度截断 (防止 LLM 被淹没)
+        # 如果内容超过 10000 字符，强制截断，只留头部
+        max_len = 10000
+        if len(content) > max_len:
+            logger.info(f"内容过长 ({len(content)} chars)，已截断。")
+            return content[:max_len] + "\n\n...[内容过长，已截断，建议只读取前文摘要]..."
+            
+        return content
+
     try:
         if not is_valid_url(website_url):
-            return f'current url is not valid: {website_url}'
+            return f"Error: 无效的 URL 格式: {website_url}"
         
-        # 检查URL是否指向PDF文件
+        # 检查 PDF
         if website_url.lower().endswith('.pdf') or _is_pdf_url(website_url):
-            logger.info(f'Detected PDF URL: {website_url}, using PDF parser instead')
+            logger.info(f'Detected PDF URL: {website_url}')
             return _fetch_pdf_content(website_url)
         
-        # 对于普通网页，使用原有的抓取逻辑
+        # 执行抓取
         scrapeWebsiteTool = ScrapeWebsiteTool(website_url)
         logger.info(f'starting fetch {website_url} Content')
-        # 检查是否在事件循环中
+        
+        raw_result = ""
+        
         try:
             loop = asyncio.get_running_loop()
-            # 如果已经在事件循环中，创建新任务
             task = loop.create_task(scrapeWebsiteTool._run(website_url))
-            return loop.run_until_complete(task)
+            raw_result = loop.run_until_complete(task)
         except RuntimeError:
-            # 如果没有事件循环，创建新的
             loop = asyncio.new_event_loop()
-            return loop.run_until_complete(scrapeWebsiteTool._run(website_url))
-    except Exception as e:
-        logger.error(f"fetch_website_content error {str(e)}", exc_info=True)
-        # 确保返回的是字符串而不是协程
-        return f"fetch_website_content error: {str(e)}"
+            raw_result = loop.run_until_complete(scrapeWebsiteTool._run(website_url))
+            
+        # ✅ 核心：无论抓取结果如何，都先过一遍“清洗器”
+        return sanitize_output(raw_result)
 
+    # 3. 捕获所有代码层面的异常 (网络断了、DNS 挂了、超时了)
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"fetch_website_content error: {error_msg}")
+        
+        # 将复杂的 Python 异常堆栈简化为 LLM 能懂的自然语言
+        if "Connection refused" in error_msg or "Connection aborted" in error_msg:
+            return "Error: 无法连接到服务器 (Connection Refused)，目标网站可能已宕机或拒绝访问。"
+        elif "timed out" in error_msg:
+            return "Error: 请求超时 (Timeout)，服务器响应太慢或网络不通。"
+        elif "Max retries exceeded" in error_msg:
+            return "Error: 多次重试连接失败，请检查网络或 URL 是否正确。"
+        elif "SSL" in error_msg or "certificate" in error_msg:
+            return "Error: SSL 证书验证失败，目标网站可能存在安全风险或证书过期。"
+        elif "Invalid URL" in error_msg:
+            return f"Error: URL 格式无效: {website_url}"
+        else:
+            # 兜底方案：只返回错误摘要，不返回堆栈信息
+            return f"Error: 抓取工具执行失败 - {error_msg[:100]}" # 限制错误信息长度
 
 from urllib.parse import urlparse, urljoin
 import requests
