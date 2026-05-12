@@ -150,7 +150,9 @@ class SearchContext:
                         "source_name": source_name,
                         "source_type": source.get('type')
                     })
-
+                #====================在这里加入all_formatter_results的简化====================
+                #all_formatted_results=.....
+                #==========================================================================
             # 如果没有找到任何结果
             if not all_results:
                 logger.info("在所有搜索源中未找到任何相关结果")

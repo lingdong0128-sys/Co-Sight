@@ -112,7 +112,7 @@ logger.info(f"root_dir is >>>>>> {root_dir}")
 sys.path.insert(0, root_dir)
 
 current_file_path = os.path.abspath(__file__)
-work_dir = os.path.abspath(os.path.join(current_file_path, "../../../"))
+work_dir = os.path.abspath(os.path.join(os.path.dirname(current_file_path), ".."))
 os.chdir(work_dir)
 logger.info(f"current work dir is >>>>>> {os.getcwd()}")
 

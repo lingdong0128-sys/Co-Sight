@@ -1,0 +1,34 @@
+tool_result_processor.py
+主要负责工具返回值的统一解析与展示兜底：从 search 工具结果里抽取/去重 URL、检测 URL 是否可 iframe 嵌入、生成站内 /search-results 兜底页 URL（作为 first_url），并对不同工具结果做分流处理（含代码块/图像等展示所需字段的整理）
+
+flash_search_service.py
+主要负责一次 deep-search 的全流程编排：问题改写、关键词提取、并发对多个 source 执行搜索、结果合并与格式化（拼成 [webpage X begin]...end）、生成引用列表，然后把拼好的 context 一次性交给总结模型流式输出；同时包含“相关性筛选”（LLM 选索引）与 select 读正文的步骤
+deep_search.py
+主要负责 deep_search 工具层的入口封装：根据参数组装 search_engine/search_sources/web_search_info 等配置并转交给服务层执行（属于工具对外的薄封装）base_action.py（deep_search/actions）
+主要负责底层检索动作的公共逻辑，包含并发多 query 搜索时按 URL 去重、合并摘要等（更偏“搜索结果集合”的工程处理）
+
+web_search.py（deep_search/actions）
+主要负责把“search_by_source / select”等动作接到具体 searcher 与内容读取逻辑上（ActionExecutor 调用的 action 实现入口）
+
+tavily_search.py（deep_search/searchers）
+主要负责调用 Tavily 搜索 API 并对返回结果做第一层硬过滤与结构化（如分数阈值、域名黑名单、pdf 过滤等），输出标准化的候选结果列表给上层common/utils.py（deep_search/common）
+主要负责 query 的预处理与通用解析：例如从 query 中提取并清理 #标签，以及其它通用的字段/属性解析工具函数
+
+search_util.py
+主要负责网页正文抓取与清洗：请求网页、解析 HTML、去掉 script/style/nav/footer/iframe 等噪声节点、压缩空白，产出可用于总结的纯文本内容
+routers/search.py（cosight_server）
+主要负责对外 API 与流式返回：接收 /deep-research/search 请求、驱动整体执行流程、把工具事件/阶段状态/最终总结结果推给前端；同时提供 /search-results 这种站内兜底展示页渲染
+web/js/main.js（前端）
+主要负责 search 工具结果的前端解析与展示辅助：从 toolResult 里提取 URL，做 Python 字面量到 JSON 的兼容规范化（None/True/False），用于前端打开/展示搜索结果链接
+
+
+修改内容：
+我们需要在flash_search_service.py的searchcontext类，在searchcontext类中，封装了一个all_formatted_results列表用于存储最终拼接文本，其中包含了以webpage {idx + 1} begin开头和[webpage {idx + 1} end]结尾的多网页原文
+在这里，因为原文过多且过长，会导致大模型工作慢，出现响应超时等问题
+解决方案
+我是这样想的，这里的话可以分段精简，比如说可以分多个线程然后把每一个webpage {idx + 1} begin结构发给模型精简，再返回精简后的正文，再拼接回原本的结构，再进行最终总结
+所以在这里我想的是再封装一个精简函数，然后给all_formatted_results在传给大模型前跑一遍这个函数
+所需：封装好的llm调用函数
+	all_formatted_results的预期值传入
+	列表拆分，多线程跑精简
+	
