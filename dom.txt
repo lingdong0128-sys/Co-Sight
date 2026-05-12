@@ -1,0 +1,54 @@
+body
+└─ div.container
+   ├─ div.header
+   │  ├─ h1 (Co-Sight 超级智能体)
+   │  └─ button.btn-replay-history
+   │
+   ├─ div.initial-input-container.hidden   ← 任务开始后会加上 hidden（被隐藏）
+   │  ├─ div.welcome-message
+   │  │  ├─ p.welcome-title
+   │  │  └─ p.welcome-subtitle
+   │  └─ div.initial-input-field-container
+   │     ├─ textarea#initial-message-input
+   │     └─ button#initial-send-button
+   │
+   ├─ div.middle-container.show            ← 任务开始后会加上 show（显示主界面）
+   │  ├─ div.left-container
+   │  │  ├─ div.progress-overview
+   │  │  │  ├─ div#title-container (opacity 从 0 变 1)
+   │  │  │  │  └─ h3#dynamic-title
+   │  │  │  ├─ div.progress-stats
+   │  │  │  │  ├─ ... #completed-count/#completed-steps
+   │  │  │  │  ├─ ... #in-progress-count/#in-progress-steps
+   │  │  │  │  ├─ ... #blocked-count/#blocked-steps
+   │  │  │  │  └─ ... #not-started-count/#not-started-steps
+   │  │  │  └─ div.progress-container
+   │  │  │     ├─ div.progress-bar > div#progress-fill
+   │  │  │     └─ span#progress-percentage
+   │  │  │
+   │  │  └─ div.dag-container
+   │  │     ├─ div.controls (通常隐藏 display:none)
+   │  │     ├─ svg#dag-svg
+   │  │     │  ├─ defs > marker#arrowhead (静态)
+   │  │     │  └─ (动态) 大量 <g>/<circle>/<text>/<path> 等由 dag.js/d3 渲染的节点与连线
+   │  │     ├─ div#dag-operation-tip
+   │  │     ├─ div.input > input#message-input + button#send-button
+   │  │     └─ div#step-details (默认隐藏)
+   │  │
+   │  └─ div#right-container.right-container   ← 默认不 show；点“工具结果”后才 show
+   │     ├─ div.right-header
+   │     │  ├─ span#right-container-status
+   │     │  └─ button#toggle-maximize-btn / button#close-right-panel-btn
+   │     └─ div.right-content
+   │        ├─ iframe#content-iframe (默认 display:none；预览网页/HTML 时显示)
+   │        ├─ div#markdown-content (预览文本/markdown/代码时显示)
+   │        └─ div#loading-indicator
+   │
+   ├─ div#tool-call-panels-container
+   │  └─ (动态) div.tool-call-panel#tool-panel-{nodeId}  ← 每个 step 可弹出一个工具面板
+   │     ├─ div.panel-header
+   │     └─ div.tool-call-list#tool-call-list-{nodeId}
+   │
+   ├─ div#tooltip.tooltip
+   ├─ div#steps-tooltip.steps-tooltip
+   └─ div#verification-tooltip.verification-tooltip

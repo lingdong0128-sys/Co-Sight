@@ -28,7 +28,7 @@ web/js/main.js（前端）
 解决方案
 我是这样想的，这里的话可以分段精简，比如说可以分多个线程然后把每一个webpage {idx + 1} begin结构发给模型精简，再返回精简后的正文，再拼接回原本的结构，再进行最终总结
 所以在这里我想的是再封装一个精简函数，然后给all_formatted_results在传给大模型前跑一遍这个函数
-所需：封装好的llm调用函数
+所需：封装好的llm调用函数（基于已有的llmclient.chat多线程）
 	all_formatted_results的预期值传入
 	列表拆分，多线程跑精简
 	

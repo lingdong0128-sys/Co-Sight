@@ -93,6 +93,7 @@ async def websocket_handler(
                 f"cookie: {cookie}")
 
     try:
+        #=================未被使用的发包======================
         welcome_message = {
             "data": {
                 "type": "welcome",
@@ -105,6 +106,7 @@ async def websocket_handler(
             }
         }
         await manager.send_json(welcome_message, websocket)
+        #=====================================================
         # Started by AICoder, pid:cd2a2pa21827c9b148ae08eff0221b0be93612b0
         while True:
             data = await websocket.receive_json()
@@ -122,6 +124,7 @@ async def websocket_handler(
                 manager.bind_topic(data.get("topic"), websocket)
 
                 # 推送时间更新的消息给前端
+                # =============前端不处理的human发包===============
                 await manager.send_json_to_topic(data.get("topic"), {
                     "topic": data.get("topic"),
                     "data": {
@@ -135,7 +138,7 @@ async def websocket_handler(
                         "status": "in_progress"
                     }
                 }, websocket)
-
+                #==================================================
                 await _send_resp(websocket, cookie, data.get("topic"), message, lang)
 
 

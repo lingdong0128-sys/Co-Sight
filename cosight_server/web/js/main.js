@@ -2996,6 +2996,47 @@ function toggleRightContainer() {
   }
 }
 
+function toggleDagContainer() {
+  const dagContainer = document.getElementById("dag-container");
+  const toggleBtn = document.getElementById("toggle-dag-btn-outer") || document.getElementById("toggle-dag-btn");
+  if (!dagContainer || !toggleBtn) return;
+
+  const isCollapsed = dagContainer.classList.toggle("dag-collapsed");
+  const label = toggleBtn.querySelector("span");
+  if (label) {
+    label.textContent = isCollapsed ? "显示流程" : "隐藏流程";
+  }
+
+  // Hide other modules when DAG is shown
+  const chatFeed = document.getElementById("chat-message-feed");
+  const taskPanel = document.getElementById("chat-task-panel");
+  const chatHeader = document.getElementById("chat-message-header");
+  
+  if (!isCollapsed) {
+    if (chatFeed) chatFeed.style.display = "none";
+    if (taskPanel) taskPanel.style.display = "none";
+    if (chatHeader) chatHeader.style.display = "none";
+  } else {
+    if (chatFeed) chatFeed.style.display = "";
+    if (taskPanel) taskPanel.style.display = "";
+    if (chatHeader) chatHeader.style.display = "";
+  }
+
+  setTimeout(() => {
+    try {
+      if (typeof handleResize === "function") {
+        handleResize();
+      }
+    } catch (_) {}
+  }, 380);
+}
+
+function toggleTaskListPanel() {
+  const panel = document.getElementById("chat-task-panel");
+  if (!panel) return;
+  panel.classList.toggle("collapsed");
+}
+
 function toggleMaximizePanel() {
   const leftContainer = document.querySelector(".left-container");
   const rightContainer = document.getElementById("right-container");
