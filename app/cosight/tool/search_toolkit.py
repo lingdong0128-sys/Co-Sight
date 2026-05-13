@@ -45,9 +45,28 @@ class SearchToolkit:
                 exists, return the summary of this entity in a string.
         """
         import wikipedia
+        import requests
+        import os
+
+        # 设置语言为中文
+        wikipedia.set_lang('zh')
+
+        # 如果环境变量中设置了 PROXY，为 requests 配置代理
+        proxy = os.environ.get("PROXY")
+        if proxy:
+            os.environ["HTTP_PROXY"] = proxy
+            os.environ["HTTPS_PROXY"] = proxy
 
         result: str
         page_url: str = ""
+
+        # 临时替换 requests.Session.request 以增加超时时间，防止无限卡住
+        original_request = requests.Session.request
+        def request_with_timeout(*args, **kwargs):
+            kwargs.setdefault('timeout', 15)
+            return original_request(*args, **kwargs)
+            
+        requests.Session.request = request_with_timeout
 
         try:
             # 获取页面摘要
@@ -73,6 +92,17 @@ class SearchToolkit:
             )
         except wikipedia.exceptions.WikipediaException as e:
             result = f"An exception occurred during the search: {e}"
+        except requests.exceptions.Timeout:
+            result = "请求维基百科超时，请检查网络连接或代理设置。"
+        except requests.exceptions.RequestException as e:
+            result = f"请求维基百科失败: {e}"
+        except Exception as e:
+            result = f"An unexpected exception occurred: {e}"
+        finally:
+            # 恢复原始的 request 方法
+            requests.Session.request = original_request
+            # 可选：清理临时设置的环境变量代理，以免影响其他模块（如果需要）
+            # 注意：此处保留与原先逻辑一致，如果本来没设就不清理了
         
         # 如果有URL，将URL信息添加到结果中
         if page_url:

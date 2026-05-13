@@ -689,8 +689,8 @@ class MessageService {
                     filePath = args.file || args.path || null;
                 }
                 if (filePath) {
-                    path = buildApiWorkspacePath(filePath);
-                }
+                        path = buildApiWorkspacePath(filePath);
+                    }
             } catch (e) {
                 console.warn('解析文件读取工具参数失败:', e);
             }

@@ -897,6 +897,22 @@ function normalizeFilePathForFrontend(originalPath) {
 
 // 从原始绝对路径构造 API 工作区路径：/api/nae-deep-research/v1/work_space/...
 function buildApiWorkspacePath(originalPath) {
+  if (!originalPath || typeof originalPath !== "string") return originalPath;
+  if (originalPath.startsWith("/api/")) return originalPath;
+  
+  const unified = originalPath.replace(/\\/g, "/");
+  let workspaceIndex = unified.indexOf("work_space");
+  if (workspaceIndex === -1) {
+    workspaceIndex = unified.indexOf("workspace");
+  }
+  
+  if (workspaceIndex !== -1) {
+    let relativePath = unified.substring(workspaceIndex);
+    if (!relativePath.startsWith("/")) {
+      relativePath = "/" + relativePath;
+    }
+    return "/api/nae-deep-research/v1" + relativePath;
+  }
   return originalPath;
 }
 
@@ -907,6 +923,17 @@ function extractFileName(p) {
   const idx = unified.lastIndexOf("/");
   return idx >= 0 ? unified.substring(idx + 1) : unified;
 }
+
+window.openFileInRightPanel = function(filePath) {
+  const toolCall = {
+    path: filePath,
+    tool: 'read_file',
+    toolName: '读取文件',
+    status: 'completed',
+    result: ''
+  };
+  showRightPanelForTool(toolCall);
+};
 
 // 工具调用状态管理函数
 function startToolCall(nodeId, tool) {
@@ -2167,6 +2194,12 @@ function toggleLoadingIndicator(isShow) {
 function cleanupContentResources() {
   const iframe = document.getElementById("content-iframe");
   const markdownContent = document.getElementById("markdown-content");
+  const rightContent = document.querySelector(".right-content");
+
+  if (rightContent) {
+    const alternativePanels = rightContent.querySelectorAll(".iframe-alternative-panel");
+    alternativePanels.forEach(panel => panel.remove());
+  }
 
   if (iframe) {
     // 清理事件监听器
@@ -2410,13 +2443,13 @@ function showRightPanelForTool(toolCall) {
       // 提取work_space之后的路径部分
       const workspaceIndex = relativePath.indexOf("work_space");
       if (workspaceIndex !== -1) {
-        relativePath = relativePath.substring(workspaceIndex);
+        relativePath = "/api/nae-deep-research/v1/" + relativePath.substring(workspaceIndex).replace(/\\/g, "/");
       }
     } else if (relativePath.includes("workspace")) {
       // 兼容旧的workspace命名
       const workspaceIndex = relativePath.indexOf("workspace");
       if (workspaceIndex !== -1) {
-        relativePath = relativePath.substring(workspaceIndex);
+        relativePath = "/api/nae-deep-research/v1/" + relativePath.substring(workspaceIndex).replace(/\\/g, "/");
       }
     }
 
@@ -2865,13 +2898,13 @@ function loadMarkdownFile(filePath, tool, toolCall) {
     // 提取work_space之后的路径部分
     const workspaceIndex = filePath.indexOf("work_space");
     if (workspaceIndex !== -1) {
-      relativePath = filePath.substring(workspaceIndex);
+      relativePath = "/api/nae-deep-research/v1/" + filePath.substring(workspaceIndex).replace(/\\/g, "/");
     }
   } else if (filePath.includes("workspace")) {
     // 兼容旧的workspace命名
     const workspaceIndex = filePath.indexOf("workspace");
     if (workspaceIndex !== -1) {
-      relativePath = filePath.substring(workspaceIndex);
+      relativePath = "/api/nae-deep-research/v1/" + filePath.substring(workspaceIndex).replace(/\\/g, "/");
     }
   }
 
@@ -3719,8 +3752,13 @@ function showAlternativeOptions(url) {
         </style>
     `;
 
-  // 清空现有内容并添加替代面板
-  rightContent.innerHTML = "";
+  // 清除可能存在的旧替代面板
+  const oldPanel = rightContent.querySelector(".iframe-alternative-panel");
+  if (oldPanel) {
+    oldPanel.remove();
+  }
+
+  // 追加新的替代面板
   rightContent.appendChild(alternativePanel);
 }
 

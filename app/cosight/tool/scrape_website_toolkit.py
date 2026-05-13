@@ -97,9 +97,12 @@ def fetch_website_content(website_url):
             task = loop.create_task(scrapeWebsiteTool._run(website_url))
             return loop.run_until_complete(task)
         except RuntimeError:
-            # 如果没有事件循环，创建新的
+            # 如果没有事件循环，创建新的并确保执行后关闭
             loop = asyncio.new_event_loop()
-            return loop.run_until_complete(scrapeWebsiteTool._run(website_url))
+            try:
+                return loop.run_until_complete(scrapeWebsiteTool._run(website_url))
+            finally:
+                loop.close()
     except Exception as e:
         logger.error(f"fetch_website_content error {str(e)}", exc_info=True)
         # 确保返回的是字符串而不是协程
