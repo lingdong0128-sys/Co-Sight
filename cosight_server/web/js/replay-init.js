@@ -3,6 +3,9 @@
  * 检测URL参数中是否包含回放请求,如果有则自动启动回放
  */
 
+// 保存当前任务状态的快照，以便退出回放时恢复
+let savedTaskState = null;
+
 // 检查URL参数是否包含回放请求
 function checkReplayRequest() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -12,16 +15,17 @@ function checkReplayRequest() {
     if (isReplay && workspacePath) {
         console.log('检测到回放请求:', workspacePath);
         
-        // 清除URL参数,避免刷新时重复触发
-        // window.history.replaceState({}, document.title, window.location.pathname);
+        // 保存当前任务状态（如果有），以便退出回放时恢复
+        saveCurrentTaskState();
         
         // 切换到主界面
         if (typeof hideInitialInputAndShowMain === 'function') {
             hideInitialInputAndShowMain('');
         }
         
-        // 显示回放状态提示
+        // 显示回放状态提示和退出回放按钮
         showReplayStatus();
+        showExitReplayButton();
         
         // 延迟启动回放,确保WebSocket已连接
         setTimeout(() => {
@@ -34,6 +38,107 @@ function checkReplayRequest() {
     return false;
 }
 
+// 保存当前任务状态
+function saveCurrentTaskState() {
+    try {
+        const lastManusStep = localStorage.getItem('cosight:lastManusStep');
+        const stepToolEvents = localStorage.getItem('cosight:stepToolEvents');
+        const planIdByTopic = localStorage.getItem('cosight:planIdByTopic');
+        const pendingRequests = localStorage.getItem('cosight:pendingRequests');
+        
+        if (lastManusStep || stepToolEvents) {
+            savedTaskState = {
+                lastManusStep: lastManusStep,
+                stepToolEvents: stepToolEvents,
+                planIdByTopic: planIdByTopic,
+                pendingRequests: pendingRequests,
+                savedAt: Date.now()
+            };
+            // 保存到sessionStorage，这样即使页面刷新也能恢复
+            sessionStorage.setItem('cosight:savedTaskState', JSON.stringify(savedTaskState));
+            console.log('✓ 当前任务状态已保存');
+        } else {
+            console.log('没有正在进行的任务状态需要保存');
+        }
+    } catch (e) {
+        console.warn('保存任务状态失败:', e);
+    }
+}
+
+// 恢复当前任务状态（退出回放时调用）
+function restoreCurrentTaskState() {
+    try {
+        // 先从sessionStorage恢复
+        const savedRaw = sessionStorage.getItem('cosight:savedTaskState');
+        if (savedRaw) {
+            savedTaskState = JSON.parse(savedRaw);
+            sessionStorage.removeItem('cosight:savedTaskState');
+        }
+        
+        if (!savedTaskState) {
+            console.log('没有保存的任务状态需要恢复');
+            return false;
+        }
+        
+        // 恢复localStorage中的任务状态
+        if (savedTaskState.lastManusStep) {
+            localStorage.setItem('cosight:lastManusStep', savedTaskState.lastManusStep);
+        }
+        if (savedTaskState.stepToolEvents) {
+            localStorage.setItem('cosight:stepToolEvents', savedTaskState.stepToolEvents);
+        }
+        if (savedTaskState.planIdByTopic) {
+            localStorage.setItem('cosight:planIdByTopic', savedTaskState.planIdByTopic);
+        }
+        if (savedTaskState.pendingRequests) {
+            localStorage.setItem('cosight:pendingRequests', savedTaskState.pendingRequests);
+        }
+        
+        console.log('✓ 当前任务状态已恢复');
+        return true;
+    } catch (e) {
+        console.warn('恢复任务状态失败:', e);
+        return false;
+    }
+}
+
+// 退出回放模式，返回当前任务
+function exitReplayMode() {
+    console.log('========== 退出回放模式 ==========');
+    
+    // 恢复任务状态
+    const restored = restoreCurrentTaskState();
+    
+    // 移除回放标识和退出按钮
+    const badge = document.querySelector('.replay-badge');
+    if (badge) {
+        badge.remove();
+    }
+    const exitBtn = document.querySelector('.exit-replay-btn');
+    if (exitBtn) {
+        exitBtn.remove();
+    }
+    
+    // 清理回放相关的UI状态
+    try {
+        if (typeof window.resetSessionCaches === 'function') {
+            window.resetSessionCaches();
+        }
+    } catch (e) {
+        console.warn('清理回放状态失败:', e);
+    }
+    
+    if (restored) {
+        // 重新加载页面以恢复DAG图
+        // 使用sessionStorage标记，避免localStorage被清空
+        sessionStorage.setItem('cosight:returnToCurrentTask', 'true');
+        window.location.reload();
+    } else {
+        // 没有保存的任务状态，刷新页面回到初始状态
+        window.location.reload();
+    }
+}
+
 // 从工作区启动回放
 function startReplayFromWorkspace(workspacePath) {
     console.log('========== 开始回放 ==========');
@@ -41,7 +146,7 @@ function startReplayFromWorkspace(workspacePath) {
     console.log('当前URL:', window.location.href);
     console.log('WebSocket状态:', window.WebSocketService ? window.WebSocketService.isOpen : 'WebSocket未初始化');
     
-    // 清理现有状态
+    // 清理现有状态（但保留已保存的任务状态快照）
     try {
         if (typeof window.resetSessionCaches === 'function') {
             window.resetSessionCaches();
@@ -105,6 +210,19 @@ function showReplayStatus() {
     }
 }
 
+// 显示退出回放按钮
+function showExitReplayButton() {
+    const header = document.querySelector('.header');
+    if (header && !document.querySelector('.exit-replay-btn')) {
+        const exitBtn = document.createElement('button');
+        exitBtn.className = 'exit-replay-btn';
+        exitBtn.innerHTML = '<i class="fas fa-stop"></i> 退出回放';
+        exitBtn.title = '退出回放模式，返回当前任务';
+        exitBtn.onclick = exitReplayMode;
+        header.appendChild(exitBtn);
+    }
+}
+
 // 页面加载完成后检查回放请求
 window.addEventListener('DOMContentLoaded', () => {
     // 等待WebSocket连接
@@ -126,5 +244,9 @@ window.addEventListener('DOMContentLoaded', () => {
 if (typeof window !== 'undefined') {
     window.checkReplayRequest = checkReplayRequest;
     window.startReplayFromWorkspace = startReplayFromWorkspace;
+    window.exitReplayMode = exitReplayMode;
+    window.saveCurrentTaskState = saveCurrentTaskState;
+    window.restoreCurrentTaskState = restoreCurrentTaskState;
 }
+
 

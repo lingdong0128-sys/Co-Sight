@@ -13,9 +13,14 @@
     <div class="replay-container">
         <div class="replay-header">
             <h1><i class="fas fa-history"></i> 任务回放历史</h1>
-            <button class="btn-back" onclick="goBack()">
-                <i class="fas fa-arrow-left"></i> 返回主页
-            </button>
+            <div class="replay-header-buttons">
+                <button class="btn-back" onclick="goBackToCurrentTask()" id="btn-back-to-task" style="display: none;">
+                    <i class="fas fa-arrow-left"></i> 返回当前任务
+                </button>
+                <button class="btn-back" onclick="goBack()">
+                    <i class="fas fa-arrow-left"></i> 返回主页
+                </button>
+            </div>
         </div>
 
         <div class="replay-filter">
@@ -47,7 +52,33 @@
                 : '/cosight/index.html';
             window.location.href = targetPage;
         }
+
+        // 返回当前任务的函数
+        function goBackToCurrentTask() {
+            // 检查是否有正在进行的任务（通过localStorage判断）
+            const lastManusStep = localStorage.getItem('cosight:lastManusStep');
+            if (lastManusStep) {
+                // 有正在进行的任务，返回主页面并保持当前任务状态
+                const targetPage = window.location.pathname.includes('/cosight/') 
+                    ? 'index.html' 
+                    : '/cosight/index.html';
+                // 添加一个标记，表示是返回当前任务，不要清空localStorage
+                sessionStorage.setItem('cosight:returnToCurrentTask', 'true');
+                window.location.href = targetPage;
+            } else {
+                // 没有正在进行的任务，隐藏按钮或提示
+                document.getElementById('btn-back-to-task').style.display = 'none';
+            }
+        }
+
+        // 页面加载时检查是否有正在进行的任务，显示"返回当前任务"按钮
+        window.addEventListener('DOMContentLoaded', function() {
+            const lastManusStep = localStorage.getItem('cosight:lastManusStep');
+            const btnBackToTask = document.getElementById('btn-back-to-task');
+            if (lastManusStep && btnBackToTask) {
+                btnBackToTask.style.display = 'flex';
+            }
+        });
     </script>
 </body>
 </html>
-

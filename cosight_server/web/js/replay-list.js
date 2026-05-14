@@ -59,6 +59,30 @@ function renderReplayList(workspaces) {
 function startReplay(workspacePath) {
     console.log('开始回放，工作区路径:', workspacePath);
     
+    // 在跳转前保存当前任务状态（如果有），以便退出回放时恢复
+    try {
+        const lastManusStep = localStorage.getItem('cosight:lastManusStep');
+        const stepToolEvents = localStorage.getItem('cosight:stepToolEvents');
+        const planIdByTopic = localStorage.getItem('cosight:planIdByTopic');
+        const pendingRequests = localStorage.getItem('cosight:pendingRequests');
+        
+        if (lastManusStep || stepToolEvents) {
+            const savedState = {
+                lastManusStep: lastManusStep,
+                stepToolEvents: stepToolEvents,
+                planIdByTopic: planIdByTopic,
+                pendingRequests: pendingRequests,
+                savedAt: Date.now()
+            };
+            sessionStorage.setItem('cosight:savedTaskState', JSON.stringify(savedState));
+            console.log('✓ 当前任务状态已保存到sessionStorage');
+        } else {
+            console.log('没有正在进行的任务状态需要保存');
+        }
+    } catch (e) {
+        console.warn('保存任务状态失败:', e);
+    }
+    
     // 根据当前路径决定跳转目标
     const targetPage = window.location.pathname.includes('/cosight/') 
         ? 'index.html' 
@@ -69,6 +93,7 @@ function startReplay(workspacePath) {
     console.log('跳转到:', replayUrl);
     window.location.href = replayUrl;
 }
+
 
 // 格式化时间
 function formatTime(isoString) {

@@ -14,11 +14,19 @@
     <link rel="stylesheet" href="styles/styles.css">
     <link rel="stylesheet" href="styles/md.css">
     
-    <!-- 页面刷新时清空localStorage -->
+    <!-- 页面刷新时清空localStorage（但保留从回放页面返回当前任务时的状态） -->
     <script>
-        // 页面刷新时清空localStorage中的所有内容
-        localStorage.clear();
-        console.log('页面刷新，已清空localStorage');
+        // 检查是否是从回放页面返回当前任务
+        const isReturnToTask = sessionStorage.getItem('cosight:returnToCurrentTask') === 'true';
+        if (isReturnToTask) {
+            // 从回放页面返回，保留localStorage中的任务状态
+            sessionStorage.removeItem('cosight:returnToCurrentTask');
+            console.log('从回放页面返回当前任务，保留localStorage数据');
+        } else {
+            // 正常刷新页面，清空localStorage中的所有内容
+            localStorage.clear();
+            console.log('页面刷新，已清空localStorage');
+        }
     </script>
 </head>
 
